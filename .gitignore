@@ -1,0 +1,13 @@
+/.htaccess
+/dataset_mfcc.csv
+/index
+/library.txt
+/log.txt
+/passenger_wsgi.py
+/public
+/static
+/stderr.log
+/tmp
+/train_model.py
+/venv
+/__pycache__
