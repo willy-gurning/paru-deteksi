@@ -1,5 +1,5 @@
 Flask
 numpy
-librosa
 scikit-learn
-gunicorn
+librosa
+soundfile
