@@ -54,7 +54,7 @@ def predict():
             return 'File tidak valid.', 400
 
         file_content = file.read()
-        if not file_content or len(file_content) < 1000:
+        if not file_content or len(file_content) < 500:
             return 'File kosong atau terlalu kecil, silakan upload ulang.', 400
 
         file.stream.seek(0)
