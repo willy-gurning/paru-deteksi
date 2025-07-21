@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Deteksi Penyakit Paru</title>
   <style>
     body {
@@ -84,25 +84,24 @@
 
     <!-- Upload Manual -->
     <form id="uploadForm" action="../predict" method="POST" enctype="multipart/form-data">
-      <input type="file" name="file" accept=".wav" required>
-      <input type="submit" value="Deteksi dari File">
+      <input type="file" name="file" accept=".wav" required />
+      <input type="submit" value="Deteksi dari File" />
     </form>
 
-    <hr>
+    <hr />
 
     <!-- Rekam Suara -->
     <button id="startBtn">🎙️ Mulai Rekam</button>
     <button id="stopBtn" disabled>⏹️ Stop Rekaman</button>
     <form id="recordForm" action="../predict" method="POST" enctype="multipart/form-data">
-      <input type="hidden" name="fromRecord" value="true">
+      <input type="hidden" name="fromRecord" value="true" />
       <audio id="audioPreview" controls></audio>
-      <input type="submit" value="Deteksi dari Rekaman" disabled id="submitRecord">
+      <input type="submit" value="Deteksi dari Rekaman" disabled id="submitRecord" />
     </form>
 
     <div class="note">Gunakan Chrome/Firefox. Rekaman disimpan sebagai file .wav valid.</div>
   </div>
 
-  <script src="/static/script.js"></script>
   <script>
     let mediaRecorder;
     let audioChunks = [];
@@ -202,7 +201,6 @@
       return new Blob([view], { type: 'audio/wav' });
     }
 
-    // Loading Animation
     document.getElementById("uploadForm").addEventListener("submit", () => {
       loadingDiv.style.display = "block";
     });
