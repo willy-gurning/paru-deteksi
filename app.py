@@ -13,7 +13,7 @@ from time import perf_counter
 # === Setup Flask dengan folder template custom ===
 BASE_DIR = os.path.dirname(__file__)
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
-app = Flask(__name__, template_folder=UPLOAD_FOLDER)
+app = Flask(__name__)  # default template folder = "templates"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # === Logging ke file ===
