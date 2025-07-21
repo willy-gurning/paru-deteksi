@@ -93,24 +93,21 @@
     <!-- Rekam Suara -->
     <button id="startBtn">🎙️ Mulai Rekam</button>
     <button id="stopBtn" disabled>⏹️ Stop Rekaman</button>
-    <form id="recordForm" action="../predict" method="POST" enctype="multipart/form-data">
-      <input type="hidden" name="fromRecord" value="true">
-      <audio id="audioPreview" controls></audio>
-      <input type="submit" value="Deteksi dari Rekaman" disabled id="submitRecord">
-    </form>
+    <audio id="audioPreview" controls></audio>
+    <button id="submitRecord" disabled>🚀 Deteksi dari Rekaman</button>
 
-    <div class="note">Gunakan Chrome/Firefox. Rekaman akan dikirim sebagai file .wav valid.</div>
+    <div class="note">Gunakan Chrome/Firefox. Rekaman disimpan sebagai file .wav valid.</div>
   </div>
 
   <script>
     let mediaRecorder;
     let recordedChunks = [];
+    let finalBlob = null;
 
     const startBtn = document.getElementById("startBtn");
     const stopBtn = document.getElementById("stopBtn");
-    const audioPreview = document.getElementById("audioPreview");
-    const recordForm = document.getElementById("recordForm");
     const submitRecord = document.getElementById("submitRecord");
+    const audioPreview = document.getElementById("audioPreview");
     const loadingDiv = document.getElementById("loading");
 
     startBtn.onclick = async () => {
@@ -123,24 +120,9 @@
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(recordedChunks, { type: 'audio/wav' });
-        const wavUrl = URL.createObjectURL(blob);
+        finalBlob = new Blob(recordedChunks, { type: 'audio/wav' });
+        const wavUrl = URL.createObjectURL(finalBlob);
         audioPreview.src = wavUrl;
-
-        const file = new File([blob], 'rekaman.wav', { type: 'audio/wav' });
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(file);
-
-        // Hapus input lama kalau ada
-        const oldInput = recordForm.querySelector('input[type="file"]');
-        if (oldInput) oldInput.remove();
-
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.name = 'file';
-        fileInput.files = dataTransfer.files;
-        recordForm.appendChild(fileInput);
-
         submitRecord.disabled = false;
       };
 
@@ -155,39 +137,34 @@
       stopBtn.disabled = true;
     };
 
-    // Manual upload form
+    submitRecord.onclick = async () => {
+      if (!finalBlob) return alert("Tidak ada rekaman.");
+      const formData = new FormData();
+      const file = new File([finalBlob], 'rekaman.wav', { type: 'audio/wav' });
+      formData.append("file", file);
+
+      loadingDiv.style.display = "block";
+
+      try {
+        const res = await fetch("/predict", {
+          method: "POST",
+          body: formData
+        });
+
+        const html = await res.text();
+        document.open();
+        document.write(html);
+        document.close();
+      } catch (err) {
+        alert("Gagal mengirim rekaman.");
+        console.error(err);
+      } finally {
+        loadingDiv.style.display = "none";
+      }
+    };
+
     document.getElementById("uploadForm").addEventListener("submit", () => {
       loadingDiv.style.display = "block";
-    });
-
-    // Rekaman submit manual diganti fetch
-    recordForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const fileInput = recordForm.querySelector('input[type="file"]');
-      const file = fileInput?.files[0];
-
-      if (!file) {
-        alert("❌ Tidak ada file rekaman ditemukan.");
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("file", file);
-      loadingDiv.style.display = "block";
-
-      fetch("/predict", {
-        method: "POST",
-        body: formData,
-      })
-        .then((res) => res.text())
-        .then((html) => {
-          loadingDiv.style.display = "none";
-          document.body.innerHTML = html;
-        })
-        .catch((err) => {
-          loadingDiv.style.display = "none";
-          alert("❌ Gagal mengirim rekaman:\n" + err);
-        });
     });
   </script>
 </body>
