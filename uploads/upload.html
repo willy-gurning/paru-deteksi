@@ -91,81 +91,84 @@
     <hr />
 
     <!-- Rekam Suara -->
-    <button id="startBtn">🎙️ Mulai Rekam</button>
+    <form id="recordForm" enctype="multipart/form-data">
+<button id="startBtn">🎙️ Mulai Rekam</button>
     <button id="stopBtn" disabled>⏹️ Stop Rekaman</button>
     <audio id="audioPreview" controls></audio>
     <button id="submitRecord" disabled>🚀 Deteksi dari Rekaman</button>
+  <audio id="audioPreview" controls></audio>
+</form>
 
     <div class="note">Gunakan Chrome/Firefox. Rekaman disimpan sebagai file .wav valid.</div>
   </div>
 
   <script>
-    let mediaRecorder;
-    let recordedChunks = [];
-    let finalBlob = null;
+  let mediaRecorder;
+  let recordedChunks = [];
+  let finalBlob = null;
 
-    const startBtn = document.getElementById("startBtn");
-    const stopBtn = document.getElementById("stopBtn");
-    const submitRecord = document.getElementById("submitRecord");
-    const audioPreview = document.getElementById("audioPreview");
-    const loadingDiv = document.getElementById("loading");
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const submitRecord = document.getElementById("submitRecord");
+  const audioPreview = document.getElementById("audioPreview");
+  const loadingDiv = document.getElementById("loading");
 
-    startBtn.onclick = async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      recordedChunks = [];
-      mediaRecorder = new MediaRecorder(stream);
+  startBtn.onclick = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recordedChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
 
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) recordedChunks.push(event.data);
-      };
-
-      mediaRecorder.onstop = () => {
-        finalBlob = new Blob(recordedChunks, { type: 'audio/wav' });
-        const wavUrl = URL.createObjectURL(finalBlob);
-        audioPreview.src = wavUrl;
-        submitRecord.disabled = false;
-      };
-
-      mediaRecorder.start();
-      startBtn.disabled = true;
-      stopBtn.disabled = false;
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) recordedChunks.push(event.data);
     };
 
-    stopBtn.onclick = () => {
-      mediaRecorder.stop();
-      startBtn.disabled = false;
-      stopBtn.disabled = true;
+    mediaRecorder.onstop = () => {
+      finalBlob = new Blob(recordedChunks, { type: 'audio/webm' }); // WEBM
+      const wavUrl = URL.createObjectURL(finalBlob);
+      audioPreview.src = wavUrl;
+      submitRecord.disabled = false;
     };
 
-    submitRecord.onclick = async () => {
-      if (!finalBlob) return alert("Tidak ada rekaman.");
-      const formData = new FormData();
-      const file = new File([finalBlob], 'rekaman.wav', { type: 'audio/wav' });
-      formData.append("file", file);
+    mediaRecorder.start();
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+  };
 
-      loadingDiv.style.display = "block";
+  stopBtn.onclick = () => {
+    mediaRecorder.stop();
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+  };
 
-      try {
-        const res = await fetch("/predict", {
-          method: "POST",
-          body: formData
-        });
+  submitRecord.onclick = async () => {
+    if (!finalBlob) return alert("Tidak ada rekaman.");
+    const formData = new FormData();
+    const file = new File([finalBlob], 'rekaman.webm', { type: 'audio/webm' }); // WEBM
+    formData.append("file", file);
 
-        const html = await res.text();
-        document.open();
-        document.write(html);
-        document.close();
-      } catch (err) {
-        alert("Gagal mengirim rekaman.");
-        console.error(err);
-      } finally {
-        loadingDiv.style.display = "none";
-      }
-    };
+    loadingDiv.style.display = "block";
 
-    document.getElementById("uploadForm").addEventListener("submit", () => {
-      loadingDiv.style.display = "block";
-    });
-  </script>
+    try {
+      const res = await fetch("/predict", {
+        method: "POST",
+        body: formData
+      });
+
+      const html = await res.text();
+      document.open();
+      document.write(html);
+      document.close();
+    } catch (err) {
+      alert("Gagal mengirim rekaman.");
+      console.error(err);
+    } finally {
+      loadingDiv.style.display = "none";
+    }
+  };
+
+  document.getElementById("uploadForm").addEventListener("submit", () => {
+    loadingDiv.style.display = "block";
+  });
+</script>
 </body>
 </html>
