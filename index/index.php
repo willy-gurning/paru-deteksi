@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -16,6 +17,7 @@
       height: 100vh;
       color: #333;
     }
+
     .container {
       background: #fff;
       padding: 30px 40px;
@@ -26,10 +28,12 @@
       text-align: center;
       position: relative;
     }
+
     h2 {
       margin-bottom: 20px;
       color: #222;
     }
+
     input[type="file"],
     button {
       margin: 12px 0;
@@ -38,6 +42,7 @@
       border-radius: 6px;
       width: 100%;
     }
+
     input[type="submit"] {
       background-color: #4facfe;
       color: white;
@@ -49,18 +54,22 @@
       transition: background-color 0.3s ease;
       width: 100%;
     }
+
     input[type="submit"]:hover {
       background-color: #00c6ff;
     }
+
     audio {
       margin-top: 10px;
       width: 100%;
     }
+
     .note {
       margin-top: 10px;
       font-size: 12px;
       color: #555;
     }
+
     #loading {
       display: none;
       position: absolute;
@@ -77,6 +86,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <div id="loading">🔍 Menganalisis batuk... Mohon tunggu...</div>
@@ -93,121 +103,157 @@
     <!-- Rekam Suara -->
     <button id="startBtn">🎙️ Mulai Rekam</button>
     <button id="stopBtn" disabled>⏹️ Stop Rekaman</button>
-    <form id="recordForm" action="../predict" method="POST" enctype="multipart/form-data">
-      <input type="hidden" name="fromRecord" value="true" />
+    <form id="recordForm">
+      <input type="hidden" name="fromRecord" value="true">
       <audio id="audioPreview" controls></audio>
-      <input type="submit" value="Deteksi dari Rekaman" disabled id="submitRecord" />
+      <button type="button" id="submitRecord" disabled>Deteksi dari Rekaman</button>
     </form>
+
 
     <div class="note">Gunakan Chrome/Firefox. Rekaman disimpan sebagai file .wav valid.</div>
   </div>
 
   <script>
-    let mediaRecorder;
-    let audioChunks = [];
+  let mediaRecorder;
+  let audioChunks = [];
 
-    const startBtn = document.getElementById("startBtn");
-    const stopBtn = document.getElementById("stopBtn");
-    const audioPreview = document.getElementById("audioPreview");
-    const recordForm = document.getElementById("recordForm");
-    const submitRecord = document.getElementById("submitRecord");
-    const loadingDiv = document.getElementById("loading");
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const audioPreview = document.getElementById("audioPreview");
+  const submitRecord = document.getElementById("submitRecord");
+  const loadingDiv = document.getElementById("loading");
 
-    startBtn.onclick = async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const context = new AudioContext();
-      const source = context.createMediaStreamSource(stream);
-      const processor = context.createScriptProcessor(4096, 1, 1);
-      const buffer = [];
+  let wavBlob;
 
-      processor.onaudioprocess = e => {
-        buffer.push(new Float32Array(e.inputBuffer.getChannelData(0)));
-      };
+  startBtn.onclick = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const context = new AudioContext();
+    const source = context.createMediaStreamSource(stream);
+    const processor = context.createScriptProcessor(4096, 1, 1);
+    const buffer = [];
 
-      source.connect(processor);
-      processor.connect(context.destination);
-
-      startBtn.disabled = true;
-      stopBtn.disabled = false;
-
-      stopBtn.onclick = () => {
-        processor.disconnect();
-        source.disconnect();
-        context.close();
-
-        const flatBuffer = flattenArray(buffer);
-        const wavBlob = encodeWAV(flatBuffer, context.sampleRate);
-        const wavUrl = URL.createObjectURL(wavBlob);
-        audioPreview.src = wavUrl;
-
-        const file = new File([wavBlob], "rekaman.wav", { type: "audio/wav" });
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(file);
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.name = 'file';
-        fileInput.files = dataTransfer.files;
-        recordForm.appendChild(fileInput);
-        submitRecord.disabled = false;
-
-        startBtn.disabled = false;
-        stopBtn.disabled = true;
-      };
+    processor.onaudioprocess = (e) => {
+      buffer.push(new Float32Array(e.inputBuffer.getChannelData(0)));
     };
 
-    function flattenArray(channelBuffer) {
-      const length = channelBuffer.reduce((acc, cur) => acc + cur.length, 0);
-      const result = new Float32Array(length);
-      let offset = 0;
-      for (let i = 0; i < channelBuffer.length; i++) {
-        result.set(channelBuffer[i], offset);
-        offset += channelBuffer[i].length;
-      }
-      return result;
+    source.connect(processor);
+    processor.connect(context.destination);
+
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+
+    stopBtn.onclick = () => {
+      processor.disconnect();
+      source.disconnect();
+      context.close();
+
+      const flatBuffer = flattenArray(buffer);
+      wavBlob = encodeWAV(flatBuffer, context.sampleRate);
+      const wavUrl = URL.createObjectURL(wavBlob);
+      audioPreview.src = wavUrl;
+
+      submitRecord.disabled = false;
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    };
+  };
+
+  submitRecord.onclick = async () => {
+    if (!wavBlob) {
+      alert("Belum ada rekaman!");
+      return;
     }
 
-    function encodeWAV(samples, sampleRate) {
-      const buffer = new ArrayBuffer(44 + samples.length * 2);
-      const view = new DataView(buffer);
+    loadingDiv.style.display = "block";
 
-      function writeString(view, offset, string) {
-        for (let i = 0; i < string.length; i++) {
-          view.setUint8(offset + i, string.charCodeAt(i));
-        }
+    const file = new File([wavBlob], "rekaman.wav", {
+      type: "audio/wav"
+    });
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("fromRecord", "true");
+
+    try {
+      const response = await fetch("../predict", {
+        method: "POST",
+        body: formData
+      });
+
+      const result = await response.text();
+      alert("✅ Hasil Deteksi:\n" + result);
+    } catch (error) {
+      console.error(error);
+      alert("❌ Gagal mengirim rekaman.");
+    } finally {
+      loadingDiv.style.display = "none";
+    }
+  };
+
+  function flattenArray(channelBuffer) {
+    const length = channelBuffer.reduce((acc, cur) => acc + cur.length, 0);
+    const result = new Float32Array(length);
+    let offset = 0;
+    for (let i = 0; i < channelBuffer.length; i++) {
+      result.set(channelBuffer[i], offset);
+      offset += channelBuffer[i].length;
+    }
+    return result;
+  }
+
+  function encodeWAV(samples, sampleRate) {
+    const buffer = new ArrayBuffer(44 + samples.length * 2);
+    const view = new DataView(buffer);
+
+    function writeString(view, offset, string) {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
       }
-
-      const volume = 1;
-      let offset = 0;
-
-      writeString(view, offset, 'RIFF'); offset += 4;
-      view.setUint32(offset, 36 + samples.length * 2, true); offset += 4;
-      writeString(view, offset, 'WAVE'); offset += 4;
-      writeString(view, offset, 'fmt '); offset += 4;
-      view.setUint32(offset, 16, true); offset += 4;
-      view.setUint16(offset, 1, true); offset += 2;
-      view.setUint16(offset, 1, true); offset += 2;
-      view.setUint32(offset, sampleRate, true); offset += 4;
-      view.setUint32(offset, sampleRate * 2, true); offset += 4;
-      view.setUint16(offset, 2, true); offset += 2;
-      view.setUint16(offset, 16, true); offset += 2;
-      writeString(view, offset, 'data'); offset += 4;
-      view.setUint32(offset, samples.length * 2, true); offset += 4;
-
-      for (let i = 0; i < samples.length; i++, offset += 2) {
-        const s = Math.max(-1, Math.min(1, samples[i]));
-        view.setInt16(offset, s * 0x7FFF * volume, true);
-      }
-
-      return new Blob([view], { type: 'audio/wav' });
     }
 
-    document.getElementById("uploadForm").addEventListener("submit", () => {
-      loadingDiv.style.display = "block";
-    });
+    const volume = 1;
+    let offset = 0;
 
-    document.getElementById("recordForm").addEventListener("submit", () => {
-      loadingDiv.style.display = "block";
-    });
-  </script>
+    writeString(view, offset, "RIFF");
+    offset += 4;
+    view.setUint32(offset, 36 + samples.length * 2, true);
+    offset += 4;
+    writeString(view, offset, "WAVE");
+    offset += 4;
+    writeString(view, offset, "fmt ");
+    offset += 4;
+    view.setUint32(offset, 16, true);
+    offset += 4;
+    view.setUint16(offset, 1, true);
+    offset += 2;
+    view.setUint16(offset, 1, true);
+    offset += 2;
+    view.setUint32(offset, sampleRate, true);
+    offset += 4;
+    view.setUint32(offset, sampleRate * 2, true);
+    offset += 4;
+    view.setUint16(offset, 2, true);
+    offset += 2;
+    view.setUint16(offset, 16, true);
+    offset += 2;
+    writeString(view, offset, "data");
+    offset += 4;
+    view.setUint32(offset, samples.length * 2, true);
+    offset += 4;
+
+    for (let i = 0; i < samples.length; i++, offset += 2) {
+      const s = Math.max(-1, Math.min(1, samples[i]));
+      view.setInt16(offset, s * 0x7fff * volume, true);
+    }
+
+    return new Blob([view], { type: "audio/wav" });
+  }
+
+  // Form upload manual (file browse biasa)
+  document.getElementById("uploadForm").addEventListener("submit", () => {
+    loadingDiv.style.display = "block";
+  });
+</script>
 </body>
+
 </html>
