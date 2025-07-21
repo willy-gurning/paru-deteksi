@@ -93,9 +93,10 @@
     <!-- Rekam Suara -->
     <button id="startBtn">🎙️ Mulai Rekam</button>
     <button id="stopBtn" disabled>⏹️ Stop Rekaman</button>
-    <form id="recordForm" method="POST" enctype="multipart/form-data">
+    <form id="recordForm" action="../predict" method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="fromRecord" value="true">
       <audio id="audioPreview" controls></audio>
-      <input type="submit" value="Deteksi dari Rekaman" disabled id="submitRecord" />
+      <input type="submit" value="Deteksi dari Rekaman" disabled id="submitRecord">
     </form>
 
     <div class="note">Gunakan Chrome/Firefox. Rekaman akan dikirim sebagai file .wav valid.</div>
