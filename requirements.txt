@@ -1,5 +1,6 @@
-Flask
+flask
 librosa
-numpy
 soundfile
+audioread
+numpy
 scikit-learn
