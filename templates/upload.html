@@ -158,74 +158,110 @@
     <small>🎓 Gunakan Chrome/Firefox. Rekaman disimpan sebagai file <code>.wav</code> valid.</small>
   </div>
 
-  <script>
-    let mediaRecorder;
-    let recordedChunks = [];
-    let finalBlob = null;
+ <script>
+  let mediaRecorder;
+  let audioChunks = [];
 
-    const startBtn = document.getElementById("startBtn");
-    const stopBtn = document.getElementById("stopBtn");
-    const submitRecord = document.getElementById("submitRecord");
-    const audioPreview = document.getElementById("audioPreview");
-    const loadingDiv = document.getElementById("loading");
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const audioPlayer = document.getElementById("audioPlayer");
+  const submitRecord = document.getElementById("submitRecord");
+  const recordingIndicator = document.getElementById("recordingIndicator");
+  const countdownEl = document.getElementById("countdown");
 
-    startBtn.onclick = async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      recordedChunks = [];
-      mediaRecorder = new MediaRecorder(stream);
+  startBtn.onclick = async () => {
+    let countdown = 3;
+    countdownEl.style.display = "block";
+    countdownEl.innerText = countdown;
 
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) recordedChunks.push(event.data);
-      };
-
-      mediaRecorder.onstop = () => {
-        finalBlob = new Blob(recordedChunks, { type: 'audio/webm' });
-        const wavUrl = URL.createObjectURL(finalBlob);
-        audioPreview.src = wavUrl;
-        submitRecord.disabled = false;
-      };
-
-      mediaRecorder.start();
-      startBtn.disabled = true;
-      stopBtn.disabled = false;
-    };
-
-    stopBtn.onclick = () => {
-      mediaRecorder.stop();
-      startBtn.disabled = false;
-      stopBtn.disabled = true;
-    };
-
-    submitRecord.onclick = async () => {
-      if (!finalBlob) return alert("Tidak ada rekaman.");
-      const formData = new FormData();
-      const file = new File([finalBlob], 'rekaman.webm', { type: 'audio/webm' });
-      formData.append("file", file);
-
-      loadingDiv.style.display = "block";
-
-      try {
-        const res = await fetch("/predict", {
-          method: "POST",
-          body: formData
-        });
-
-        const html = await res.text();
-        document.open();
-        document.write(html);
-        document.close();
-      } catch (err) {
-        alert("Gagal mengirim rekaman.");
-        console.error(err);
-      } finally {
-        loadingDiv.style.display = "none";
+    const interval = setInterval(() => {
+      countdown--;
+      if (countdown > 0) {
+        countdownEl.innerText = countdown;
+      } else {
+        clearInterval(interval);
+        countdownEl.style.display = "none";
+        mulaiRekam();
       }
+    }, 1000);
+  };
+
+  async function mulaiRekam() {
+    audioChunks = [];
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+
+    mediaRecorder.ondataavailable = (event) => {
+      audioChunks.push(event.data);
     };
 
-    document.getElementById("uploadForm").addEventListener("submit", () => {
-      loadingDiv.style.display = "block";
-    });
-  </script>
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(audioChunks, { type: "audio/wav" });
+      const audioURL = URL.createObjectURL(blob);
+      audioPlayer.src = audioURL;
+      submitRecord.disabled = false;
+      recordingIndicator.style.display = "none";
+
+      // Tambah amplifier volume (GainNode)
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioContext.createMediaElementSource(audioPlayer);
+      const gainNode = audioContext.createGain();
+      gainNode.gain.value = 1.8; // Volume diperbesar 1.8x
+      source.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      submitRecord.onclick = (e) => {
+        e.preventDefault();
+        const formData = new FormData();
+        const file = new File([blob], "rekaman.wav", { type: "audio/wav" });
+        formData.append("file", file);
+
+        fetch("/predict", {
+          method: "POST",
+          body: formData,
+        })
+          .then((res) => res.text())
+          .then((result) => {
+            document.body.innerHTML = result;
+          })
+          .catch((err) => {
+            alert("Gagal mengirim rekaman.");
+            console.error(err);
+          });
+      };
+    };
+
+    mediaRecorder.start();
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    recordingIndicator.style.display = "inline-block";
+  }
+
+  stopBtn.onclick = () => {
+    mediaRecorder.stop();
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+};
+
+//// === Preview file audio sebelum diupload ===
+const fileInput = document.getElementById('fileInput');
+const previewPlayer = document.getElementById('previewPlayer');
+
+fileInput.addEventListener('change', () => {
+  const file = fileInput.files[0];
+  if (file && file.type === "audio/wav") {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      previewPlayer.src = e.target.result;
+      previewPlayer.style.display = "block";
+    };
+    reader.readAsDataURL(file);
+  } else {
+    previewPlayer.style.display = "none";
+  }
+});
+
+</script>
 
 </body>
 </html>
