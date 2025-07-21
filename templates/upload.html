@@ -189,45 +189,39 @@
   async function mulaiRekam() {
     audioChunks = [];
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
 
     mediaRecorder.ondataavailable = (event) => {
-      audioChunks.push(event.data);
+      if (event.data.size > 0) {
+        audioChunks.push(event.data);
+      }
     };
 
     mediaRecorder.onstop = () => {
-      const blob = new Blob(audioChunks, { type: "audio/wav" });
+      const blob = new Blob(audioChunks, { type: "audio/webm" });
       const audioURL = URL.createObjectURL(blob);
       audioPlayer.src = audioURL;
       submitRecord.disabled = false;
       recordingIndicator.style.display = "none";
 
-      // Tambah amplifier volume (GainNode)
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const source = audioContext.createMediaElementSource(audioPlayer);
-      const gainNode = audioContext.createGain();
-      gainNode.gain.value = 1.8; // Volume diperbesar 1.8x
-      source.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
       submitRecord.onclick = (e) => {
         e.preventDefault();
         const formData = new FormData();
-        const file = new File([blob], "rekaman.wav", { type: "audio/wav" });
+        const file = new File([blob], "rekaman.webm", { type: "audio/webm" });
         formData.append("file", file);
 
         fetch("/predict", {
           method: "POST",
           body: formData,
         })
-          .then((res) => res.text())
-          .then((result) => {
-            document.body.innerHTML = result;
-          })
-          .catch((err) => {
-            alert("Gagal mengirim rekaman.");
-            console.error(err);
-          });
+        .then((res) => res.text())
+        .then((result) => {
+          document.body.innerHTML = result;
+        })
+        .catch((err) => {
+          alert("Gagal mengirim rekaman.");
+          console.error(err);
+        });
       };
     };
 
@@ -241,27 +235,27 @@
     mediaRecorder.stop();
     startBtn.disabled = false;
     stopBtn.disabled = true;
-};
+  };
 
-//// === Preview file audio sebelum diupload ===
-const fileInput = document.getElementById('fileInput');
-const previewPlayer = document.getElementById('previewPlayer');
+  // Preview upload manual
+  const fileInput = document.getElementById('fileInput');
+  const previewPlayer = document.getElementById('previewPlayer');
 
-fileInput.addEventListener('change', () => {
-  const file = fileInput.files[0];
-  if (file && file.type === "audio/wav") {
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      previewPlayer.src = e.target.result;
-      previewPlayer.style.display = "block";
-    };
-    reader.readAsDataURL(file);
-  } else {
-    previewPlayer.style.display = "none";
-  }
-});
-
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (file && (file.type === "audio/wav" || file.type === "audio/webm")) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        previewPlayer.src = e.target.result;
+        previewPlayer.style.display = "block";
+      };
+      reader.readAsDataURL(file);
+    } else {
+      previewPlayer.style.display = "none";
+    }
+  });
 </script>
+
 
 </body>
 </html>
